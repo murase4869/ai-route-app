@@ -1,0 +1,390 @@
+/* ==================== グローバルスタイル ==================== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #f5f7fa;
+  color: #2c3e50;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==================== コンテナ ==================== */
+.app-container {
+  max-width: 700px;
+  margin: 30px auto;
+  padding: 40px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ==================== タイトル ==================== */
+.app-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #2c3e50;
+  text-align: center;
+  margin: 0 0 35px 0;
+  letter-spacing: -0.5px;
+}
+
+/* ==================== フォームグループ ==================== */
+.form-group {
+  margin-bottom: 25px;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #34495e;
+  margin-bottom: 8px;
+  text-transform: none;
+  letter-spacing: 0.3px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 11px 13px;
+  font-size: 14px;
+  border: 1px solid #d1d8df;
+  border-radius: 6px;
+  background-color: #fafbfc;
+  transition: all 0.2s ease;
+  color: #2c3e50;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3498db;
+  background-color: #fff;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.form-input::placeholder {
+  color: #95a5a6;
+}
+
+/* ==================== 経由地入力 ==================== */
+.destination-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.destination-label {
+  font-size: 13px;
+  color: #7f8c8d;
+  min-width: 65px;
+  font-weight: 500;
+}
+
+.destination-row .form-input {
+  flex: 1;
+}
+
+.btn-remove {
+  padding: 9px 13px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-remove:hover {
+  background-color: #c0392b;
+}
+
+/* ==================== フォームフッター ==================== */
+.form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.btn-secondary {
+  padding: 10px 16px;
+  background-color: #ecf0f1;
+  color: #2c3e50;
+  border: 1px solid #d1d8df;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  background-color: #dce2e8;
+  border-color: #bdc3c7;
+}
+
+/* ==================== 優先方針 ==================== */
+.preference-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.preference-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #34495e;
+  white-space: nowrap;
+}
+
+.form-select {
+  padding: 9px 12px;
+  font-size: 13px;
+  border: 1px solid #d1d8df;
+  border-radius: 6px;
+  background-color: #fafbfc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #2c3e50;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: #3498db;
+  background-color: #fff;
+}
+
+/* ==================== ボタン ==================== */
+.btn-primary {
+  width: 100%;
+  padding: 12px 20px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #2980b9;
+  box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+}
+
+.btn-primary:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+/* ==================== アラート ==================== */
+.alert {
+  padding: 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 25px;
+}
+
+.alert-error {
+  background-color: #fadbd8;
+  color: #c0392b;
+  border-left: 4px solid #e74c3c;
+}
+
+/* ==================== 結果表示 ==================== */
+.results-container {
+  margin-top: 35px;
+  padding: 25px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #ecf0f1;
+}
+
+.results-title {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 10px;
+}
+
+/* ==================== 推奨ルート ==================== */
+.recommended-route {
+  background-color: white;
+  padding: 14px;
+  border-radius: 6px;
+  border: 1px solid #ecf0f1;
+  margin-bottom: 25px;
+  font-size: 13px;
+}
+
+.recommended-route strong {
+  color: #34495e;
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.route-order {
+  font-weight: 600;
+  color: #3498db;
+  font-size: 15px;
+  margin-top: 6px;
+  word-break: break-word;
+}
+
+/* ==================== ルートリスト ==================== */
+.routes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 25px;
+}
+
+.route-card {
+  background-color: white;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid #ecf0f1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease;
+}
+
+.route-card:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.route-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.route-path {
+  font-weight: 600;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.transport-icon {
+  font-size: 20px;
+}
+
+/* ==================== ルート詳細 ==================== */
+.route-details {
+  background-color: #f0f5fa;
+  padding: 10px 12px;
+  border-radius: 5px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.detail-item {
+  font-size: 13px;
+  color: #34495e;
+}
+
+.detail-label {
+  color: #7f8c8d;
+  margin-right: 4px;
+}
+
+.detail-item strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.route-memo {
+  margin: 0;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+  font-style: normal;
+}
+
+.route-memo strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* ==================== サマリーボックス ==================== */
+.summary-box {
+  background-color: #f0f5fa;
+  padding: 16px;
+  border-radius: 6px;
+  border-left: 4px solid #3498db;
+}
+
+.summary-title {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3498db;
+}
+
+.summary-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2c3e50;
+}
+
+/* ==================== レスポンシブ ==================== */
+@media (max-width: 600px) {
+  .app-container {
+    margin: 20px 15px;
+    padding: 25px 20px;
+  }
+
+  .app-title {
+    font-size: 24px;
+    margin-bottom: 25px;
+  }
+
+  .form-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-secondary {
+    width: 100%;
+  }
+
+  .preference-group {
+    width: 100%;
+  }
+
+  .form-select {
+    width: 100%;
+  }
+
+  .route-details {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .destination-row {
+    flex-wrap: wrap;
+  }
+
+  .destination-row .form-input {
+    flex: 1 1 auto;
+  }
+}
