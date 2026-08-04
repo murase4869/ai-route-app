@@ -12,7 +12,11 @@ app.use('/*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// APIキー設定（直書きを削除し、環境変数のみを参照）
+// 動作確認（ヘルスチェック）用エンドポイント
+app.get('/', (c) => c.text('AI Route API is running!'));
+app.get('/api/route', (c) => c.json({ message: 'Use POST method to generate routes.' }));
+
+// APIキー設定
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
   console.warn('⚠️ GEMINI_API_KEY が環境変数に設定されていません。');
