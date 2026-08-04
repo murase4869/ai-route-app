@@ -1,86 +1,97 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { serve } from '@hono/node-server';
 
 const app = new Hono();
 
-// 【CORSエラー完全回避設定】フロントエンドからのリクエストをすべて許可します
+// CORS設定（すべてのオリジンからのリクエストを許可）
 app.use('/*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// ⚠️ あなたのGemini APIキー（AIzaSy...）をここに貼り付けてください
-const ai = new GoogleGenAI({ apiKey: 'AIzaSyAutSs7pVDUNZHp4hwo449b4uJSaOjkgOc' });
+// APIキー設定（直書きを削除し、環境変数のみを参照）
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) {
+  console.warn('⚠️ GEMINI_API_KEY が環境変数に設定されていません。');
+}
+const genAI = new GoogleGenerativeAI(apiKey || '');
 
 app.post('/api/route', async (c) => {
   try {
-    const { destinations, modePreference } = await c.req.json<{
+    const { startPoint, endPoint, destinations, modePreference } = await c.req.json<{
+      startPoint: string;
+      endPoint: string;
       destinations: string[];
       modePreference: 'balanced' | 'fastest' | 'cheapest';
     }>();
 
-    if (!destinations || destinations.length < 2) {
-      return c.json({ error: '目的地を2つ以上入力してください。' }, 400);
+    if (!startPoint || !endPoint) {
+      return c.json({ error: '出発地点と終着地点を入力してください。' }, 400);
     }
 
-    // AIの返却フォーマットを厳密に定義（フロントエンドのApp.tsxと完全に一致）
+    const waypoints = destinations && destinations.length > 0 ? destinations.join(', ') : 'なし（直行）';
+
+    // 安定版SDK用のJSONスキーマ定義
     const responseSchema = {
-      type: Type.OBJECT,
+      type: SchemaType.OBJECT,
       properties: {
         optimizedOrder: { 
-          type: Type.ARRAY, 
-          items: { type: Type.STRING },
-          description: '効率的な順に並び替えた目的地名の配列'
+          type: SchemaType.ARRAY, 
+          items: { type: SchemaType.STRING },
+          description: '効率的な順に並び替えた地点名の配列（出発地〜経由地〜終着地）'
         },
         routes: {
-          type: Type.ARRAY,
+          type: SchemaType.ARRAY,
           items: {
-            type: Type.OBJECT,
+            type: SchemaType.OBJECT,
             properties: {
-              from: { type: Type.STRING },
-              to: { type: Type.STRING },
-              transportMode: { type: Type.STRING, description: '最適な移動手段（例：電車、徒歩など）' },
-              estimatedTime: { type: Type.STRING, description: '移動時間の目安（例：約15分）' },
-              cost: { type: Type.STRING, description: '費用の目安（例：300円、0円など）' },
-              memo: { type: Type.STRING, description: 'その手段を選んだ理由やアドバイス' }
+              from: { type: SchemaType.STRING },
+              to: { type: SchemaType.STRING },
+              transportMode: { type: SchemaType.STRING, description: '最適な移動手段（例：電車、徒歩など）' },
+              estimatedTime: { type: SchemaType.STRING, description: '移動時間の目安（例：約15分）' },
+              cost: { type: SchemaType.STRING, description: '費用の目安（例：300円、0円など）' },
+              memo: { type: SchemaType.STRING, description: 'その手段を選んだ理由やアドバイス' }
             },
             required: ['from', 'to', 'transportMode', 'estimatedTime', 'memo']
           }
         },
-        totalSummary: { type: Type.STRING, description: 'ルート全体に対するAIの総評' }
+        totalSummary: { type: SchemaType.STRING, description: 'ルート全体に対するAIの総評' }
       },
       required: ['optimizedOrder', 'routes', 'totalSummary']
     };
 
-    const prompt = `
-    あなたは移動ルート最適化のエキスパートです。
-    提供された以下の目的地リストを地理的位置関係や一般的な交通の便を考慮して、最も効率的に巡回できる順番に並び替えてください。
-    また、各区間の移動手段（電車、車、自転車、徒歩など）を適切に選択してください。
-
-    【条件】
-    - 目的地リスト: ${destinations.join(', ')}
-    - 優先方針: ${modePreference} (balanced=快適さと効率のバランス, fastest=最短時間, cheapest=最安費用)
-    `;
-
-    // 賢くて高速な最新モデル「gemini-2.5-flash」を呼び出し
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
+    // モデルの取得（安定版の gemini-1.5-flash を指定）
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      generationConfig: {
         responseMimeType: 'application/json',
         responseSchema: responseSchema,
-      }
+      },
     });
 
-    const responseText = response.text;
+    const prompt = `
+    あなたは移動ルート最適化のエキスパートです。
+    提供された「出発地点」「経由地」「終着地点」をもとに、地理的位置関係や一般的な交通の便を考慮して、最も効率的に移動できるルートを提案してください。
+
+    【移動条件】
+    - 出発地点: ${startPoint}
+    - 経由地: ${waypoints}
+    - 終着地点: ${endPoint}
+    - 優先方針: ${modePreference} (balanced=快適さと効率のバランス, fastest=最短時間, cheapest=最安費用)
+
+    ※経由地が「なし（直行）」の場合は、出発地点から終着地点へ直接向かう最適なルートを出力してください。
+    `;
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+
     if (!responseText) {
       throw new Error('AIからのレスポンスが空でした。');
     }
 
-    // 生成されたJSONをそのままフロントに返す
     return c.json(JSON.parse(responseText));
 
   } catch (error: any) {
@@ -89,6 +100,7 @@ app.post('/api/route', async (c) => {
   }
 });
 
-// 3000番ポートでHonoサーバーを待機状態にする
-serve({ fetch: app.fetch, port: 3000 });
-console.log('🚀 AI Server is running on http://localhost:3000');
+// Render等の環境変数PORT（なければ3000）で起動
+const port = Number(process.env.PORT) || 3000;
+serve({ fetch: app.fetch, port });
+console.log(`🚀 AI Server is running on port ${port}`);
