@@ -67,8 +67,9 @@ app.post('/api/route', async (c) => {
       required: ['optimizedOrder', 'routes', 'totalSummary']
     };
 
+    // モデルの取得（安定版の gemini-1.5-flash に設定）
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       generationConfig: {
         responseMimeType: 'application/json',
         responseSchema: responseSchema,
