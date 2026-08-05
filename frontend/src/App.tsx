@@ -65,17 +65,16 @@ export default function App() {
     const filteredDestinations = destinations.filter(d => d.trim() !== '');
 
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-      const res = await fetch(`${apiBaseUrl}/api/route`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          startPoint: startPoint.trim(),
-          endPoint: endPoint.trim(), 
-          destinations: filteredDestinations, 
-          modePreference: preference  
-        }),
-      });
+      const res = await fetch('https://ai-route-backend-7vz6.onrender.com/api/route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+      startPoint: startPoint.trim(),
+      endPoint: endPoint.trim(),
+      destinations: filteredDestinations,
+      modePreference: preference
+    }),
+    });
 
       if (!res.ok) {
         throw new Error(`サーバーエラー: ${res.status}`);
