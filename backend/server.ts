@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
@@ -17,9 +19,9 @@ app.get('/', (c) => c.text('AI Route API is running!'));
 app.get('/api/route', (c) => c.json({ message: 'Use POST method to generate routes.' }));
 
 // APIキー設定
-const apiKey = process.env.GEMINI_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 if (!apiKey) {
-  console.warn('⚠️ GEMINI_API_KEY が環境変数に設定されていません。');
+  console.warn('⚠️ GEMINI_API_KEY が環境変数に設定されていません。backend/.env に GEMINI_API_KEY=your_key を追加するか、環境変数を設定してください。');
 }
 const genAI = new GoogleGenerativeAI(apiKey || '');
 
@@ -104,7 +106,6 @@ app.post('/api/route', async (c) => {
   }
 });
 
-// Render等の環境変数PORT（なければ3000）で起動
 const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port });
 console.log(`🚀 AI Server is running on port ${port}`);
