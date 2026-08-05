@@ -1,29 +1,18 @@
-import dotenv from 'dotenv';
-dotenv.config();
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { serve } from '@hono/node-server';
 
 const app = new Hono();
 
-// CORS設定（すべてのオリジンからのリクエストを許可）
+// CORS設定
 app.use('/*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// 動作確認（ヘルスチェック）用エンドポイント
 app.get('/', (c) => c.text('AI Route API is running!'));
 app.get('/api/route', (c) => c.json({ message: 'Use POST method to generate routes.' }));
-
-// APIキー設定
-const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-if (!apiKey) {
-  console.warn('⚠️ GEMINI_API_KEY が環境変数に設定されていません。backend/.env に GEMINI_API_KEY=your_key を追加するか、環境変数を設定してください。');
-}
-const genAI = new GoogleGenerativeAI(apiKey || '');
 
 app.post('/api/route', async (c) => {
   try {
@@ -38,45 +27,13 @@ app.post('/api/route', async (c) => {
       return c.json({ error: '出発地点と終着地点を入力してください。' }, 400);
     }
 
+    // 環境変数から新しいAPIキーを取得
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('サーバーにAPIキーが設定されていません。');
+    }
+
     const waypoints = destinations && destinations.length > 0 ? destinations.join(', ') : 'なし（直行）';
-
-    // 安定版SDK用のJSONスキーマ定義
-    const responseSchema = {
-      type: SchemaType.OBJECT,
-      properties: {
-        optimizedOrder: { 
-          type: SchemaType.ARRAY, 
-          items: { type: SchemaType.STRING },
-          description: '効率的な順に並び替えた地点名の配列（出発地〜経由地〜終着地）'
-        },
-        routes: {
-          type: SchemaType.ARRAY,
-          items: {
-            type: SchemaType.OBJECT,
-            properties: {
-              from: { type: SchemaType.STRING },
-              to: { type: SchemaType.STRING },
-              transportMode: { type: SchemaType.STRING, description: '最適な移動手段（例：電車、徒歩など）' },
-              estimatedTime: { type: SchemaType.STRING, description: '移動時間の目安（例：約15分）' },
-              cost: { type: SchemaType.STRING, description: '費用の目安（例：300円、0円など）' },
-              memo: { type: SchemaType.STRING, description: 'その手段を選んだ理由やアドバイス' }
-            },
-            required: ['from', 'to', 'transportMode', 'estimatedTime', 'memo']
-          }
-        },
-        totalSummary: { type: SchemaType.STRING, description: 'ルート全体に対するAIの総評' }
-      },
-      required: ['optimizedOrder', 'routes', 'totalSummary']
-    };
-
-    // モデルの取得（安定版の gemini-1.5-flash に設定）
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: responseSchema,
-      },
-    });
 
     const prompt = `
     あなたは移動ルート最適化のエキスパートです。
@@ -91,13 +48,59 @@ app.post('/api/route', async (c) => {
     ※経由地が「なし（直行）」の場合は、出発地点から終着地点へ直接向かう最適なルートを出力してください。
     `;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    // 💡 SDKを使わず、直接GoogleのREST APIを叩く（最も確実な方法）
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-    if (!responseText) {
-      throw new Error('AIからのレスポンスが空でした。');
+    const requestBody = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            optimizedOrder: {
+              type: "ARRAY",
+              items: { type: "STRING" },
+              description: "効率的な順に並び替えた地点名の配列（出発地〜経由地〜終着地）"
+            },
+            routes: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  from: { type: "STRING" },
+                  to: { type: "STRING" },
+                  transportMode: { type: "STRING", description: "最適な移動手段（例：電車、徒歩など）" },
+                  estimatedTime: { type: "STRING", description: "移動時間の目安" },
+                  cost: { type: "STRING", description: "費用の目安" },
+                  memo: { type: "STRING", description: "その手段を選んだ理由やアドバイス" }
+                },
+                required: ["from", "to", "transportMode", "estimatedTime", "memo"]
+              }
+            },
+            totalSummary: { type: "STRING", description: "ルート全体に対するAIの総評" }
+          },
+          required: ["optimizedOrder", "routes", "totalSummary"]
+        }
+      }
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+
+    const data = await response.json();
+
+    // ⛔ Google側からエラーが返ってきた場合
+    if (!response.ok) {
+      console.error("Google APIからの詳細エラー:", JSON.stringify(data, null, 2));
+      throw new Error(`Google API Error: ${data.error?.message || response.statusText}`);
     }
 
+    // ✅ 成功時：AIのテキスト（JSON文字列）を取得して返す
+    const responseText = data.candidates[0].content.parts[0].text;
     return c.json(JSON.parse(responseText));
 
   } catch (error: any) {
@@ -108,4 +111,4 @@ app.post('/api/route', async (c) => {
 
 const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port });
-console.log(`🚀 AI Server is running on port ${port}`);
+console.log(`🚀 AI Server is running on port ${port} (REST API Mode)`);
