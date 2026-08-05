@@ -49,7 +49,7 @@ app.post('/api/route', async (c) => {
     `;
 
     // 💡 SDKを使わず、直接GoogleのREST APIを叩く（最も確実な方法）
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
 
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
