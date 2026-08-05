@@ -71,7 +71,7 @@ app.post('/api/route', async (c) => {
 
     // モデルの取得（安定版の gemini-1.5-flash に設定）
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-pro',
+      model: 'gemini-1.5-flash',
       generationConfig: {
         responseMimeType: 'application/json',
         responseSchema: responseSchema,
