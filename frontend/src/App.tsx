@@ -65,7 +65,7 @@ export default function App() {
     const filteredDestinations = destinations.filter(d => d.trim() !== '');
 
     try {
-      const res = await fetch('https://ai-route-app.onrender.com', {
+      const res = await fetch('https://ai-route-app.onrender.com/api/route', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
