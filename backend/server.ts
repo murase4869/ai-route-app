@@ -8,7 +8,7 @@ const app = new Hono();
 app.use('/*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'x-goog-api-key'],
+  allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.get('/', (c) => c.text('AI Route API is running!'));
@@ -27,7 +27,7 @@ app.post('/api/route', async (c) => {
       return c.json({ error: '出発地点と終着地点を入力してください。' }, 400);
     }
 
-    // 💡 修正1: 環境変数に誤って混入した「"」や「'」を強制的に削除する
+    // 💡 APIキーのクリーンアップ（見えない空白や記号を徹底排除）
     const apiKey = (process.env.GEMINI_API_KEY || '').replace(/['"]/g, '').trim();
     if (!apiKey) {
       throw new Error('サーバーにAPIキーが設定されていません。');
@@ -35,9 +35,9 @@ app.post('/api/route', async (c) => {
 
     const waypoints = destinations && destinations.length > 0 ? destinations.join(', ') : 'なし（直行）';
 
+    // 💡 プロンプト内で直接JSONの形を厳格に指定する
     const prompt = `
-    あなたは移動ルート最適化のエキスパートです。
-    提供された「出発地点」「経由地」「終着地点」をもとに、地理的位置関係や一般的な交通の便を考慮して、最も効率的に移動できるルートを提案してください。
+    あなたは移動ルート最適化のエキスパートです。以下の条件で最適なルートを提案し、指定のJSONフォーマットだけで回答してください。マークダウン（\`\`\`json など）は一切不要です。
 
     【移動条件】
     - 出発地点: ${startPoint}
@@ -45,94 +45,55 @@ app.post('/api/route', async (c) => {
     - 終着地点: ${endPoint}
     - 優先方針: ${modePreference} (balanced=快適さと効率のバランス, fastest=最短時間, cheapest=最安費用)
 
-    ※経由地が「なし（直行）」の場合は、出発地点から終着地点へ直接向かう最適なルートを出力してください。
+    【出力するJSONフォーマット】
+    {
+      "optimizedOrder": ["出発地", "経由地", "終着地"],
+      "routes": [
+        {
+          "from": "出発地",
+          "to": "到着地",
+          "transportMode": "電車",
+          "estimatedTime": "30分",
+          "cost": "400円",
+          "memo": "理由"
+        }
+      ],
+      "totalSummary": "全体の総評"
+    }
     `;
 
-    // 💡 修正2: 安定版の v1 エンドポイントを使用
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent`;
+    // 💡 確実に動作する v1beta エンドポイントを使用
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
+    // 💡 余計な設定（generationConfig）をすべて排除し、最もシンプルな形に
     const requestBody = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            optimizedOrder: {
-              type: "ARRAY",
-              items: { type: "STRING" },
-              description: "効率的な順に並び替えた地点名の配列"
-            },
-            routes: {
-              type: "ARRAY",
-              items: {
-                type: "OBJECT",
-                properties: {
-                  from: { type: "STRING" },
-                  to: { type: "STRING" },
-                  transportMode: { type: "STRING" },
-                  estimatedTime: { type: "STRING" },
-                  cost: { type: "STRING" },
-                  memo: { type: "STRING" }
-                },
-                required: ["from", "to", "transportMode", "estimatedTime", "memo"]
-              }
-            },
-            totalSummary: { type: "STRING" }
-          },
-          required: ["optimizedOrder", "routes", "totalSummary"]
-        }
-      }
+      contents: [{ parts: [{ text: prompt }] }]
     };
 
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey 
-        },
-        body: JSON.stringify(requestBody)
-      });
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(`Google API Error: ${data.error?.message || response.statusText}`);
-      }
-
-      const responseText = data.candidates[0].content.parts[0].text;
-      return c.json(JSON.parse(responseText));
-
-    } catch (apiError: any) {
-      console.error("【警告】Google API通信失敗（フォールバック稼働）:", apiError);
-      
-      // 🛡️ 面接本番用のお守り（フォールバック処理）
-      // APIが弾かれても、システム自体は生きていることを証明するためにダミーの美しいルートを返します
-      const fallbackPoints = [startPoint, ...(destinations || []), endPoint].filter(Boolean);
-      const fallbackRoutes = [];
-      
-      for (let i = 0; i < fallbackPoints.length - 1; i++) {
-        fallbackRoutes.push({
-          from: fallbackPoints[i],
-          to: fallbackPoints[i+1],
-          transportMode: "電車（推奨）",
-          estimatedTime: "約30分",
-          cost: "約400円",
-          memo: "（※AI通信制限時の緊急フォールバックルート）"
-        });
-      }
-
-      return c.json({
-        optimizedOrder: fallbackPoints,
-        routes: fallbackRoutes,
-        totalSummary: "【システム正常稼働中】現在Google API側で一時的なアクセス制限が発生しているため、システムに内蔵されたフォールバック（緊急回避）ルートを表示しています。フロントエンドからバックエンドへのリクエストは完璧に成功しています。"
-      });
+    if (!response.ok) {
+      console.error("【Google APIエラー詳細】:", JSON.stringify(data, null, 2));
+      throw new Error(`Google API Error: ${data.error?.message || response.statusText}`);
     }
+
+    // ✅ 本物のAIからの返答を取得し、万が一のマークダウン記号を削除してパース
+    let responseText = data.candidates[0].content.parts[0].text;
+    responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    return c.json(JSON.parse(responseText));
 
   } catch (error: any) {
     console.error('バックエンド内部エラー:', error);
-    return c.json({ error: 'システムエラーが発生しました。詳細: ' + error.message }, 500);
+    return c.json({ error: 'AIルート生成に失敗しました。詳細: ' + error.message }, 500);
   }
 });
 
