@@ -27,7 +27,7 @@ app.post('/api/route', async (c) => {
       return c.json({ error: '出発地点と終着地点を入力してください。' }, 400);
     }
 
-    // 環境変数から新しいAPIキーを取得
+    // 環境変数からAPIキーを取得
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('サーバーにAPIキーが設定されていません。');
@@ -48,8 +48,8 @@ app.post('/api/route', async (c) => {
     ※経由地が「なし（直行）」の場合は、出発地点から終着地点へ直接向かう最適なルートを出力してください。
     `;
 
-    // 💡 SDKを使わず、直接GoogleのREST APIを叩く（最も確実な方法）
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+    // 💡 確実に動作し、JSONスキーマに対応している最新の「gemini-1.5-flash」を使用します
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -85,6 +85,7 @@ app.post('/api/route', async (c) => {
       }
     };
 
+    // 💡 POSTメソッドを明示的に指定して送信（これが一番の解決策です）
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
