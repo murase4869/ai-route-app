@@ -1,18 +1,17 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
-import { GoogleGenerativeAI } from '@google/generative-ai'; // 🌟 公式SDKを追加
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const app = new Hono();
 
-// CORS設定
 app.use('/*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-app.get('/', (c) => c.text('AI Route API is running!'));
+app.get('/', (c) => c.text('AI Route API is running'));
 app.get('/api/route', (c) => c.json({ message: 'Use POST method to generate routes.' }));
 
 app.post('/api/route', async (c) => {
@@ -30,7 +29,7 @@ app.post('/api/route', async (c) => {
 
     const apiKey = (process.env.GEMINI_API_KEY || '').trim();
     if (!apiKey) {
-      throw new Error('サーバーにAPIキーが設定されていません。');
+      throw new Error('API key is not set');
     }
 
     const waypoints = destinations && destinations.length > 0 ? destinations.join(', ') : 'なし（直行）';
@@ -61,24 +60,24 @@ app.post('/api/route', async (c) => {
     }
     `;
 
-    // 💡 公式SDKを使用してAIと通信（URLやメソッドのエラーを自動で防ぎます）
+    // 新規ユーザーのモデルバージョン制限を回避するため latest を指定
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     const result = await model.generateContent(prompt);
     let responseText = result.response.text();
 
-    // JSON文字列をパース可能な形にクリーンアップ
+    // マークダウンの除去
     responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
 
     return c.json(JSON.parse(responseText));
 
   } catch (error: any) {
-    console.error('バックエンド内部エラー:', error);
-    return c.json({ error: 'AIルート生成に失敗しました。詳細: ' + error.message }, 500);
+    console.error('API Error:', error);
+    return c.json({ error: 'ルートの生成に失敗しました。' }, 500);
   }
 });
 
 const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port });
-console.log(`🚀 AI Server is running on port ${port} (SDK Mode)`);
+console.log(`Server is running on port ${port}`);
