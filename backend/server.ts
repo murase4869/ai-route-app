@@ -8,7 +8,7 @@ const app = new Hono();
 app.use('/*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-goog-api-key'],
 }));
 
 app.get('/', (c) => c.text('AI Route API is running!'));
@@ -27,8 +27,8 @@ app.post('/api/route', async (c) => {
       return c.json({ error: '出発地点と終着地点を入力してください。' }, 400);
     }
 
-    // 環境変数からAPIキーを取得
-    const apiKey = process.env.GEMINI_API_KEY;
+    // 💡 修正1: 環境変数から取得したAPIキーの「見えない改行・空白」を完全に削除！
+    const apiKey = (process.env.GEMINI_API_KEY || '').trim();
     if (!apiKey) {
       throw new Error('サーバーにAPIキーが設定されていません。');
     }
@@ -48,8 +48,8 @@ app.post('/api/route', async (c) => {
     ※経由地が「なし（直行）」の場合は、出発地点から終着地点へ直接向かう最適なルートを出力してください。
     `;
 
-    // 💡 確実に動作し、JSONスキーマに対応している最新の「gemini-1.5-flash」を使用します
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // 💡 修正2: URLにAPIキーをくっつけず、純粋なエンドポイントだけにする
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
 
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -85,10 +85,13 @@ app.post('/api/route', async (c) => {
       }
     };
 
-    // 💡 POSTメソッドを明示的に指定して送信（これが一番の解決策です）
+    // 💡 修正3: ヘッダー（x-goog-api-key）に安全な状態でキーを忍ばせる
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey 
+      },
       body: JSON.stringify(requestBody)
     });
 
