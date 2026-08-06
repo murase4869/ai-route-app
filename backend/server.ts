@@ -63,7 +63,7 @@ app.post('/api/route', async (c) => {
 
     // 💡 公式SDKを使用してAIと通信（URLやメソッドのエラーを自動で防ぎます）
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     const result = await model.generateContent(prompt);
     let responseText = result.response.text();
