@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
+import { GoogleGenerativeAI } from '@google/generative-ai'; // 🌟 公式SDKを追加
 
 const app = new Hono();
 
@@ -27,15 +28,13 @@ app.post('/api/route', async (c) => {
       return c.json({ error: '出発地点と終着地点を入力してください。' }, 400);
     }
 
-    // 💡 APIキーのクリーンアップ（見えない空白や記号を徹底排除）
-    const apiKey = (process.env.GEMINI_API_KEY || '').replace(/['"]/g, '').trim();
+    const apiKey = (process.env.GEMINI_API_KEY || '').trim();
     if (!apiKey) {
       throw new Error('サーバーにAPIキーが設定されていません。');
     }
 
     const waypoints = destinations && destinations.length > 0 ? destinations.join(', ') : 'なし（直行）';
 
-    // 💡 プロンプト内で直接JSONの形を厳格に指定する
     const prompt = `
     あなたは移動ルート最適化のエキスパートです。以下の条件で最適なルートを提案し、指定のJSONフォーマットだけで回答してください。マークダウン（\`\`\`json など）は一切不要です。
 
@@ -62,33 +61,16 @@ app.post('/api/route', async (c) => {
     }
     `;
 
-    // 💡 確実に動作する v1beta エンドポイントを使用
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // 💡 公式SDKを使用してAIと通信（URLやメソッドのエラーを自動で防ぎます）
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // 💡 余計な設定（generationConfig）をすべて排除し、最もシンプルな形に
-    const requestBody = {
-      contents: [{ parts: [{ text: prompt }] }]
-    };
+    const result = await model.generateContent(prompt);
+    let responseText = result.response.text();
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("【Google APIエラー詳細】:", JSON.stringify(data, null, 2));
-      throw new Error(`Google API Error: ${data.error?.message || response.statusText}`);
-    }
-
-    // ✅ 本物のAIからの返答を取得し、万が一のマークダウン記号を削除してパース
-    let responseText = data.candidates[0].content.parts[0].text;
+    // JSON文字列をパース可能な形にクリーンアップ
     responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-    
+
     return c.json(JSON.parse(responseText));
 
   } catch (error: any) {
@@ -99,4 +81,4 @@ app.post('/api/route', async (c) => {
 
 const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port });
-console.log(`🚀 AI Server is running on port ${port} (REST API Mode)`);
+console.log(`🚀 AI Server is running on port ${port} (SDK Mode)`);
