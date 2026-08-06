@@ -16,18 +16,16 @@ interface ApiResponse {
   totalSummary: string;
 }
 
-// 移動手段に応じて絵文字を返す見た目アップ用の関数
 const getTransportIcon = (mode: string) => {
   const m = mode.toLowerCase();
   if (m.includes('電車') || m.includes('駅') || m.includes('線')) return '🚃';
   if (m.includes('車') || m.includes('タクシー') || m.includes('ドライブ')) return '🚗';
   if (m.includes('自転車') || m.includes('チャリ') || m.includes('サイクル')) return '🚲';
   if (m.includes('バス')) return '🚌';
-  return '🚶'; // デフォルトは徒歩
+  return '🚶';
 };
 
 export default function App() {
-  // 状態（State）の定義
   const [startPoint, setStartPoint] = useState<string>('');
   const [endPoint, setEndPoint] = useState<string>('');
   const [destinations, setDestinations] = useState<string[]>(['', '', '']);
@@ -56,35 +54,34 @@ export default function App() {
     setResult(null);
 
     if (!startPoint.trim() || !endPoint.trim()) {
-      setErrorMsg('出発地点と終着地点は必ず入力してください。');
+      setErrorMsg('出発地点と終着地点を入力してください。');
       setLoading(false);
       return;
     }
 
-    // 空白の入力を除外
     const filteredDestinations = destinations.filter(d => d.trim() !== '');
 
     try {
       const res = await fetch('https://ai-route-app.onrender.com/api/route', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-      startPoint: startPoint.trim(),
-      endPoint: endPoint.trim(),
-      destinations: filteredDestinations,
-      modePreference: preference
-    }),
-    });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startPoint: startPoint.trim(),
+          endPoint: endPoint.trim(),
+          destinations: filteredDestinations,
+          modePreference: preference
+        }),
+      });
 
       if (!res.ok) {
-        throw new Error(`サーバーエラー: ${res.status}`);
+        throw new Error(`Server error: ${res.status}`);
       }
 
       const data = await res.json();
       setResult(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setErrorMsg('バックエンド（サーバー）との接続に失敗しました。ターミナルでサーバーが起動しているか、またはURLが正しいか確認してください。');
+      setErrorMsg('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {
       setLoading(false);
     }
@@ -155,7 +152,7 @@ export default function App() {
             <label className="preference-label">優先方針</label>
             <select 
               value={preference} 
-              onChange={(e: any) => setPreference(e.target.value)}
+              onChange={(e) => setPreference(e.target.value as 'balanced' | 'fastest' | 'cheapest')}
               className="form-select"
             >
               <option value="balanced">バランス</option>
