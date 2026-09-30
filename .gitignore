@@ -1,0 +1,9 @@
+# 秘密情報（APIキーなど）は絶対にコミットしない
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+*.log
+.DS_Store
